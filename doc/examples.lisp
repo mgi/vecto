@@ -49,7 +49,7 @@
           (move-to 30 0)
           (line-to 40 0)
           (stroke)))
-      (save-png file))))
+      (save file))))
 
 (defun feedlike-icon (file)
   (with-canvas (:width 100 :height 100)
@@ -76,7 +76,7 @@
     (set-line-width 2)
     (set-rgba-stroke 1.0 1.0 1.0 0.1)
     (fill-and-stroke)
-    (save-png file)))
+    (save file)))
 
 (defun star-clipping (file)
   (with-canvas (:width 200 :height 200)
@@ -99,7 +99,7 @@
         (loop for i downfrom 1.0 by 0.05
               repeat 20 do
               (circle i)))
-      (save-png file))))
+      (save file))))
 
 (defun gradient-example (file)
   (with-canvas (:width 200 :height 50)
@@ -109,7 +109,7 @@
                        1 0 0 0)
     (rectangle 0 0 200 50)
     (fill-path)
-    (save-png file)))
+    (save file)))
 
 (defun gradient-bilinear-example (file)
   (with-canvas (:width 200 :height 50)
@@ -120,7 +120,7 @@
                        :domain-function 'bilinear-domain)
     (rectangle 0 0 200 50)
     (fill-path)
-    (save-png file)))
+    (save file)))
 
 (defun text-paths (file)
   (with-canvas (:width 400 :height 100)
@@ -134,4 +134,4 @@
     (set-gradient-fill 0 0   1 0 0 0.5
                        0 100 1 1 1 1)
     (fill-path)
-    (save-png file)))
+    (save file)))

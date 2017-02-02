@@ -39,8 +39,7 @@
    ;; canvas operations
    #:with-canvas
    #:clear-canvas
-   #:save-png
-   #:save-png-stream
+   #:save
    ;; path construction
    #:move-to
    #:line-to

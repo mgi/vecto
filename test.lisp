@@ -31,7 +31,7 @@
 	     (step (/ (* pi 2) rotations)))
 	(dotimes (i rotations)
 	  (elbow (* i step)))))
-    (save-png output-file)))
+    (save output-file)))
 
 
 (defun test-rotate (output-file)
@@ -42,7 +42,7 @@
     (rotate (- (/ pi 4)))
     (set-line-width 15)
     (stroke)
-    (save-png output-file)))
+    (save output-file)))
 
 (defun test-skew (output-file)
   (with-canvas (:width 100 :height 100)
@@ -51,7 +51,7 @@
     (skew (- (/ pi 4)) (- (/ pi 4)))
     (set-line-width 15)
     (stroke)
-    (save-png output-file)))
+    (save output-file)))
 
 (defun hole-test (file)
   (with-canvas (:width 100 :height 100)
@@ -69,20 +69,20 @@
     (line-to 0.8 0.8)
     (line-to 0.1 0.8)
     (fill-path)
-    (save-png file)))
+    (save file)))
 
 (defun rectangle-test (file)
   (with-canvas (:width 100 :height 100)
     (rectangle 10 10 50 50)
     (fill-path)
-    (save-png file)))
+    (save file)))
 
 (defun rectangle-fill-test (file)
   (with-canvas (:width 5 :height 5)
     (set-rgba-fill 1 0 0 0.5)
     (rectangle 0 0 5 5)
     (fill-path)
-    (save-png file)))
+    (save file)))
 
 (defun circle-test (string file)
   (with-canvas (:width 250 :height 180)
@@ -111,7 +111,7 @@
         (fill-path))
       (set-rgb-fill 0 1 0)
       (draw-string string))
-    (save-png file)))
+    (save file)))
 
 (defun center-test (string file)
   (with-canvas (:width 200 :height 100)
@@ -122,7 +122,7 @@
       (set-rgb-stroke 0 0 0)
       (centered-circle-path 100 25 5)
       (stroke)
-      (save-png file))))
+      (save file))))
 
 (defun twittertext (string size font file)
   (zpb-ttf:with-font-loader (loader font)
@@ -135,7 +135,7 @@
         (set-rgb-fill 0 0 0)
         (translate (- (xmin bbox)) (- (ymin bbox)))
         (draw-string 0 0 string)
-        (save-png file)))))
+        (save file)))))
 
 (defun arc-to (center-x center-y radius start extent)
   ;; An arc of extent zero will generate an error at bezarc (divide by zero).
@@ -181,7 +181,7 @@
     (move-to 75 0)
     (arc-to 0 0 75 0 (degrees 15))
     (stroke)
-    (save-png file)))
+    (save file)))
 
 
 (defun rect-test (file)
@@ -189,7 +189,7 @@
     (set-rgba-fill 1 0 0 0.5)
     (rectangle 0 0 5 5)
     (fill-path)
-    (save-png file)))
+    (save file)))
 
 (defun text-test (&key string size font file)
   (with-canvas (:width 200 :height 200)
@@ -201,7 +201,7 @@
       (scale 0.5 0.5)
       (rotate (* 15 (/ pi 180)))
       (draw-string 10 10 string)
-      (save-png file))))
+      (save file))))
 
 
 (defun dash-test (file)
@@ -211,7 +211,7 @@
     (set-line-width 4)
     (set-dash-pattern #(10 10) 5)
     (fill-and-stroke)
-    (save-png file)))
+    (save file)))
 
 (defun sign-test (string font file &key
                   (font-size 72)
@@ -262,12 +262,12 @@
           (draw-string x2 y2 string))
         (set-rgb-fill 0.95 0.95 0.95)
         (draw-string x2 y2 string)
-        (save-png file)))))
+        (save file)))))
 
 
-           
 
-      
+
+
 
 
 
@@ -281,7 +281,7 @@
     (line-to 50 50)
     (line-to 100 10)
     (fill-and-stroke)
-    (save-png file)))
+    (save file)))
 
 (defun circle-test (file)
   (with-canvas (:width 1000 :height 1000)
@@ -290,7 +290,7 @@
     (centered-circle-path 50 50 45)
     (set-rgb-fill 1 1 0)
     (fill-and-stroke)
-    (save-png file)))
+    (save file)))
 
 
 
@@ -327,6 +327,4 @@
       (set-rgb-fill 0 0 0)
       (draw-string 0 0 (string-downcase fun))
       (fill-path)
-      (save-png file))))
-
-
+      (save file))))

@@ -278,7 +278,7 @@ through one control point."
     (clear-paths *graphics-state*)
     (setf (paths *graphics-state*) paths)
     (%close-subpath *graphics-state*)))
-  
+
 (defun fill-path ()
   (draw-filled-paths *graphics-state*)
   (after-painting *graphics-state*)
@@ -325,14 +325,26 @@ through one control point."
 (defun rotate-degrees (degrees)
   (%rotate *graphics-state* (* (/ pi 180) degrees)))
 
-(defun save-png (file)
-  (zpng:write-png (image *graphics-state*) file))
+(defgeneric %save (graphics-state file-or-stream)
+  (:documentation "Output the graphics state to a file or a stream."))
 
-(defun save-png-stream (stream)
-  (zpng:write-png-stream (image *graphics-state*) stream))
+(defmethod %save ((gs png-graphics-state) (file pathname))
+  (zpng:write-png (image gs) file))
 
-(defmacro with-canvas ((&key width height) &body body)
-  `(let ((*graphics-state* (make-instance 'graphics-state)))
+(defmethod %save ((gs png-graphics-state) (file string))
+  (zpng:write-png (image gs) file))
+
+(defmethod %save ((gs png-graphics-state) (stream stream))
+  (zpng:write-png-stream (image gs) stream))
+
+(defun save (file-or-stream)
+  "Output the current graphics state to a file or stream."
+  (%save *graphics-state* file-or-stream))
+
+(defmacro with-canvas ((&key (type :png) width height) &body body)
+  `(let ((*graphics-state* ,(ecase type
+                              (:png '(make-instance 'png-graphics-state))
+                              (:svg '(make-instance 'svg-graphics-state)))))
      (state-image *graphics-state* ,width ,height)
      (unwind-protect
           (progn

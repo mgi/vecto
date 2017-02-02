@@ -39,7 +39,7 @@
     (annotated-path '(20 . 20)
                     '(80 . 140)
                     '(140 . 20))
-    (save-png file)))
+    (save file)))
 
 
 (defun cap-style (style file)
@@ -53,7 +53,7 @@
     (set-line-cap style)
     (stroke)
     (annotated-path '(20 . 20) '(20 . 80))
-    (save-png file)))
+    (save file)))
 
 
 
@@ -76,7 +76,7 @@
                     '(140 . 140)
                     '(140 . 20)
                     '(20 . 20))
-    (save-png file)))
+    (save file)))
 
 (defun dash-paths (array phase cap-style file)
   (with-canvas (:width 160 :height 40)
@@ -91,8 +91,8 @@
       (line-to 140 20)
       (stroke))
     (annotated-path '(20 . 20) '(140 . 20))
-    (save-png file)))
-  
+    (save file)))
+
 
 (defun simple-clipping-path (file &key clip-circle clip-rounded-rectangle)
   (with-canvas (:width 100 :height 100)
@@ -111,7 +111,7 @@
           (clip-path)
           (end-path-no-op))
         (when clip-rounded-rectangle
-          (rounded-rectangle 45 25 50 50 10 10) 
+          (rounded-rectangle 45 25 50 50 10 10)
           (clip-path)
           (end-path-no-op))
         (set-rgb-fill 1 0 0)
@@ -130,10 +130,10 @@
           (set-rgb-stroke 0.5 0.5 0.5)
           (set-dash-pattern #(5) 0)
           (set-line-width 1)
-          (rounded-rectangle 45 25 50 50 10 10) 
+          (rounded-rectangle 45 25 50 50 10 10)
           (stroke)))
-      (save-png file))))
-  
+      (save file))))
+
 (defun arc-demo (file)
   (flet ((point (x y)
            (with-graphics-state
@@ -182,7 +182,7 @@
                (* radius (sin theta1)))
         (point (* radius (cos theta2))
                (* radius (sin theta2)))
-        (save-png file)))))
+        (save file)))))
 
 (defun pie-wedge (file)
   (with-canvas (:width 80 :height 60)
@@ -195,7 +195,7 @@
       (move-to 0 0)
       (arc x y radius angle1 angle2)
       (fill-and-stroke)
-      (save-png file))))
+      (save file))))
 
 (defun wiper (file)
   (with-canvas (:width 70 :height 70)
@@ -208,11 +208,11 @@
       (arc x y r1 angle1 angle2)
       (arcn x y r2 angle2 angle1)
       (fill-and-stroke)
-      (save-png file))))
+      (save file))))
 
-          
-      
-      
+
+
+
 
 (defun make-illustrations ()
   (cap-style :butt "cap-style-butt.png")

@@ -107,9 +107,13 @@
    :font nil
    :character-spacing *default-character-spacing*))
 
-(defgeneric image-data (state)
-  (:method (state)
-    (zpng:image-data (image state))))
+(defclass png-graphics-state (graphics-state) ())
+(defclass svg-graphics-state (graphics-state) ())
+
+(defgeneric image-data (state))
+
+(defmethod image-data ((state png-graphics-state))
+  (zpng:image-data (image state)))
 
 (defgeneric transform-function (state)
   (:documentation "Return a function that takes x, y coordinates
@@ -117,7 +121,6 @@ and returns them transformed by STATE's current transformation
 matrix as multiple values.")
   (:method (state)
     (make-transform-function (transform-matrix state))))
-
 
 (defgeneric call-after-painting (state fun)
   (:documentation
@@ -151,9 +154,11 @@ with the result of premultiplying it with MATRIX.")
 (defmethod (setf paths) :after (new-value (state graphics-state))
   (setf (path state) (first new-value)))
 
-(defun state-image (state width height)
-  "Set the backing image of the graphics state to an image of the
-specified dimensions."
+(defgeneric state-image (state with height)
+  (:documentation "Set the backing image of the graphics state to an
+image of the specified dimensions."))
+
+(defmethod state-image ((state png-graphics-state) width height)
   (setf (image state)
         (make-instance 'zpng:png
                        :width width
@@ -163,7 +168,7 @@ specified dimensions."
         (height state) height
         (clipping-path state) (make-clipping-path width height))
   (apply-matrix state (translation-matrix 0 (- height))))
-  
+
 
 (defun find-font-loader (state file)
   (let* ((cache (font-loaders state))
@@ -188,7 +193,7 @@ specified dimensions."
   (setf (fill-source state) nil))
 
 (defmethod copy ((state graphics-state))
-  (make-instance 'graphics-state
+  (make-instance (class-of state)
                  :paths (paths state)
                  :path (path state)
                  :height (height state)
