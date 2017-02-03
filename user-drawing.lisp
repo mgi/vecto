@@ -31,22 +31,31 @@
 (defvar *graphics-state*)
 (setf (documentation '*graphics-state* 'variable)
       "The currently active graphics state. Bound for the
-      duration of WITH-GRAPICS-STATE.")
+      duration of WITH-GRAPHICS-STATE.")
 
 ;;; Low-level path construction
 
-(defun %move-to (state x y)
+(defgeneric %move-to (state x y)
+  (:documentation "Move to (x,y) position in graphics state."))
+
+(defmethod %move-to ((state png-graphics-state) x y)
   (let ((path (paths:create-path :open-polyline)))
     (push (setf (path state) path) (paths state))
     (paths:path-reset path (paths:make-point x y))))
 
-(defun %line-to (state x y)
+(defgeneric %line-to (state x y)
+  (:documentation "Draw a line up to (x,y) position in graphics
+  state."))
+
+(defmethod %line-to ((state png-graphics-state) x y)
   (paths:path-extend (path state) (paths:make-straight-line)
                      (paths:make-point x y)))
 
-(defun %curve-to (state cx1 cy1 cx2 cy2 x y)
-  "Draw a cubic Bezier curve from the current point to (x,y)
-through two control points."
+(defgeneric %curve-to (state cx1 cy1 cx2 cy2 x y)
+  (:documentation "Draw a cubic Bezier curve from the current point
+  to (x,y) through two control points."))
+
+(defmethod %curve-to ((state png-graphics-state) cx1 cy1 cx2 cy2 x y)
   (let ((control-point-1 (paths:make-point cx1 cy1))
         (control-point-2 (paths:make-point cx2 cy2))
         (end-point (paths:make-point x y)))
@@ -55,9 +64,11 @@ through two control points."
                                                       control-point-2))
                        end-point)))
 
-(defun %quadratic-to (state cx cy x y)
-  "Draw a quadratic Bezier curve from the current point to (x,y)
-through one control point."
+(defgeneric %quadratic-to (state cx cy x y)
+  (:documentation "Draw a quadratic Bezier curve from the current
+  point to (x,y) through one control point."))
+
+(defmethod %quadratic-to ((state png-graphics-state) cx cy x y)
   (paths:path-extend (path state)
                      (paths:make-bezier-curve (list (paths:make-point cx cy)))
                      (paths:make-point x y)))
@@ -76,28 +87,48 @@ through one control point."
              (x2 . y2)) in curves
         do (curve-to cx1 cy1 cx2 cy2 x2 y2)))
 
-(defun %close-subpath (state)
+(defgeneric %close-subpath (state)
+  (:documentation "Close the current path of the graphics state."))
+
+(defmethod %close-subpath ((state png-graphics-state))
   (setf (paths::path-type (path state)) :closed-polyline))
 
 ;;; Clipping path
 
-(defun %end-path-no-op (state)
+(defgeneric %end-path-no-op (state)
+  (:documentation "End the current path without painting anything."))
+
+(defmethod %end-path-no-op ((state png-graphics-state))
   (after-painting state))
 
-(defun %clip-path (state)
+(defgeneric %clip-path (state)
+  (:documentation "Defines a clipping path based on the current
+  path."))
+
+(defmethod %clip-path ((state png-graphics-state))
   (call-after-painting state
                        (make-clipping-path-function state :nonzero-winding)))
 
-(defun %even-odd-clip-path (state)
+(defgeneric %even-odd-clip-path (state)
+  (:documentation "Like %CLIP-PATH, but uses the even/odd fill rule to
+  determine the outline of the clipping path."))
+
+(defmethod %even-odd-clip-path ((state png-graphics-state))
   (call-after-painting state
                        (make-clipping-path-function state :even-odd)))
 
 ;;; Text
 
-(defun %get-font (state file)
+(defgeneric %get-font (state file)
+  (:documentation "Get a font object from file."))
+
+(defmethod %get-font ((state png-graphics-state) file)
   (find-font-loader state file))
 
-(defun %set-font (state loader size)
+(defgeneric %set-font (state font size)
+  (:documentation "Set the size of the font object."))
+
+(defmethod %set-font ((state png-graphics-state) loader size)
   (let* ((scale (loader-font-scale size loader))
          (matrix (scaling-matrix scale scale)))
     (setf (font state)
@@ -106,18 +137,30 @@ through one control point."
                          :transform-matrix matrix
                          :size size))))
 
-(defun %string-paths (state x y string)
+(defgeneric %string-paths (state x y string)
+  (:documentation "Add a path made of string in current font in the
+  graphics state."))
+
+(defmethod %string-paths ((state png-graphics-state) x y string)
   (let ((font (font state)))
     (unless font
       (error "No font currently set"))
     (string-primitive-paths x y string font
                             :character-spacing (character-spacing state))))
 
-(defun %draw-string (state x y string)
+(defgeneric %draw-string (state x y string)
+  (:documentation "Draws string on the canvas with the active font."))
+
+(defmethod %draw-string ((state png-graphics-state) x y string)
   (draw-paths/state (%string-paths state x y string)
                     state))
 
-(defun %draw-centered-string (state x y string)
+(defgeneric %draw-centered-string (state x y string)
+  (:documentation "Like %DRAW-STRING but the horizontal center of the
+  string is positioned at x and the baseline of the string is
+  positioned at y."))
+
+(defmethod %draw-centered-string ((state png-graphics-state) x y string)
   (let* ((font (font state))
          (bbox
           (string-bounding-box string
@@ -142,7 +185,6 @@ through one control point."
           (append (paths *graphics-state*)
                   (%string-paths *graphics-state* (- x width/2) y string)))
     (values)))
-
 
 ;;; Low-level transforms
 
