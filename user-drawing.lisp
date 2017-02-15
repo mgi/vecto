@@ -43,6 +43,13 @@
     (push (setf (path state) path) (paths state))
     (paths:path-reset path (paths:make-point x y))))
 
+(defmethod %move-to ((state svg-graphics-state) x y)
+  (let ((path (make-array '(0) :element-type 'base-char :fill-pointer 0 :adjustable t)))
+    (push (setf (path state) path) (paths state))
+    (with-accessors ((h height)) state
+      (with-output-to-string (s path)
+        (format s "M ~d ~d " x (- h y))))))
+
 (defgeneric %line-to (state x y)
   (:documentation "Draw a line up to (x,y) position in graphics
   state."))
@@ -50,6 +57,12 @@
 (defmethod %line-to ((state png-graphics-state) x y)
   (paths:path-extend (path state) (paths:make-straight-line)
                      (paths:make-point x y)))
+
+(defmethod %line-to ((state svg-graphics-state) x y)
+  (with-accessors ((h height)
+                   (path path)) state
+    (with-output-to-string (s path)
+      (format s "L ~d ~d " x (- h y)))))
 
 (defgeneric %curve-to (state cx1 cy1 cx2 cy2 x y)
   (:documentation "Draw a cubic Bezier curve from the current point
@@ -64,6 +77,12 @@
                                                       control-point-2))
                        end-point)))
 
+(defmethod %curve-to ((state svg-graphics-state) cx1 cy1 cx2 cy2 x y)
+  (with-accessors ((h height)
+                   (path path)) state
+    (with-output-to-string (s path)
+      (format s "C ~d ~d ~d ~d ~d ~d " cx1 (- h cy1) cx2 (- h cy2) x (- h y)))))
+
 (defgeneric %quadratic-to (state cx cy x y)
   (:documentation "Draw a quadratic Bezier curve from the current
   point to (x,y) through one control point."))
@@ -72,6 +91,12 @@
   (paths:path-extend (path state)
                      (paths:make-bezier-curve (list (paths:make-point cx cy)))
                      (paths:make-point x y)))
+
+(defmethod %quadratic-to ((state svg-graphics-state) cx cy x y)
+  (with-accessors ((h height)
+                   (path path)) state
+    (with-output-to-string (s path)
+      (format s "S ~d ~d ~d ~d " cx (- h cy) x (- h y)))))
 
 (defun draw-arc-curves (curves)
   (destructuring-bind (((startx . starty) &rest ignored-curve)
@@ -92,6 +117,10 @@
 
 (defmethod %close-subpath ((state png-graphics-state))
   (setf (paths::path-type (path state)) :closed-polyline))
+
+(defmethod %close-subpath ((state svg-graphics-state))
+  (with-output-to-string (s (path state))
+    (format s "Z")))
 
 ;;; Clipping path
 
@@ -379,19 +408,35 @@
 (defmethod %save ((gs png-graphics-state) (stream stream))
   (zpng:write-png-stream (image gs) stream))
 
-(defun save (file-or-stream)
-  "Output the current graphics state to a file or stream."
-  (%save *graphics-state* file-or-stream))
+(defmethod %save ((gs svg-graphics-state) (file string))
+  (with-open-file (fd file :direction :output
+                           :if-exists :supersede
+                           :if-does-not-exist :create)
+    (write-string (image gs) fd)))
 
-(defmacro with-canvas ((&key (type :png) width height) &body body)
-  `(let ((*graphics-state* ,(ecase type
-                              (:png '(make-instance 'png-graphics-state))
-                              (:svg '(make-instance 'svg-graphics-state)))))
+(defmacro with-png-canvas ((&key width height output) &body body)
+  `(let ((*graphics-state* (make-instance 'png-graphics-state)))
      (state-image *graphics-state* ,width ,height)
      (unwind-protect
           (progn
             ,@body)
+       (%save *graphics-state* ,output)
        (clear-state *graphics-state*))))
+
+(defmacro with-svg-canvas ((&key width height output) &body body)
+  (let ((stream (gensym "STREAM")))
+    `(let ((*graphics-state* (make-instance 'svg-graphics-state))
+           (*print-pprint-dispatch* (copy-pprint-dispatch)))
+       (state-image *graphics-state* ,width ,height)
+       (set-pprint-dispatch 'float (lambda (s f) (format s "~,4f" f)))
+       (unwind-protect
+            (who:with-html-output-to-string (,stream (image *graphics-state*)
+                                                     :prologue "<?xml version=\"1.0\" standalone=\"yes\"?>"
+                                                     :indent t)
+              (who:fmt "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">")
+              (:svg :width ,width :height ,height
+                    ,@body))
+         (%save *graphics-state* ,output)))))
 
 (defmacro with-graphics-state (&body body)
   `(let ((*graphics-state* (copy *graphics-state*)))

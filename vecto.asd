@@ -29,7 +29,8 @@
 (asdf:defsystem #:vecto
   :depends-on (#:cl-vectors
                #:zpng
-               #:zpb-ttf)
+               #:zpb-ttf
+               #:cl-who)
   :version "1.4.10"
   :author "Zach Beane <xach@xach.com>"
   :description "Create vector graphics in PNG files."
@@ -81,4 +82,3 @@
                                    "graphics-state"))
                (:file "user-shortcuts"
                       :depends-on ("user-drawing"))))
-

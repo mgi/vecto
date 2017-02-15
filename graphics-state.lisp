@@ -115,6 +115,9 @@
 (defmethod image-data ((state png-graphics-state))
   (zpng:image-data (image state)))
 
+(defmethod image-data ((state svg-graphics-state))
+  (image state))
+
 (defgeneric transform-function (state)
   (:documentation "Return a function that takes x, y coordinates
 and returns them transformed by STATE's current transformation
@@ -169,6 +172,12 @@ image of the specified dimensions."))
         (clipping-path state) (make-clipping-path width height))
   (apply-matrix state (translation-matrix 0 (- height))))
 
+(defmethod state-image ((state svg-graphics-state) width height)
+  (setf (image state) (make-array '(0) :element-type 'base-char :fill-pointer 0 :adjustable t)
+        (width state) width
+        (height state) height
+        (clipping-path state) (make-clipping-path width height))
+    (apply-matrix state (translation-matrix 0 (- height))))
 
 (defun find-font-loader (state file)
   (let* ((cache (font-loaders state))

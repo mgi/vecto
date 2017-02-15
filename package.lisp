@@ -37,7 +37,8 @@
                 #:bounding-box)
   (:export
    ;; canvas operations
-   #:with-canvas
+   #:with-png-canvas
+   #:with-svg-canvas
    #:clear-canvas
    #:save
    ;; path construction

@@ -58,7 +58,7 @@
 
 (defun empty-path-p (path)
   (zerop (length (paths::path-knots path))))
-  
+
 
 (defun transform-path (path fun)
   (when (empty-path-p path)
@@ -129,7 +129,7 @@ cl-vectors-style dash vector and TOGGLE-P value."
         (paths:dash-path paths sizes :cycle-index cycle-index))
       paths))
 
-(defun stroke-paths (paths &key line-width join-style cap-style)
+(defun png-stroke-paths (paths &key line-width join-style cap-style)
   (mapcan (lambda (path)
             (paths:stroke-path path line-width
                                :joint join-style

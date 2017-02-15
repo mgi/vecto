@@ -56,7 +56,7 @@
 (defun prelerp (p q a)
   (logand #xFF (- (+ p q) (imult a p))))
 
-(defun draw-function (data width height fill-source alpha-fun)
+(defun png-draw-function (data width height fill-source alpha-fun)
   "From http://www.teamten.com/lawrence/graphics/premultiplication/"
   (declare (ignore height))
   (lambda (x y alpha)
@@ -80,7 +80,7 @@
                     (aref data (+ i 2)) (blend b.fg b.bg)))
             (setf (aref data (+ i 3)) gamma)))))))
 
-(defun draw-function/clipped (data clip-data
+(defun png-draw-function/clipped (data clip-data
                               width height
                               fill-source
                               alpha-fun)
@@ -109,16 +109,48 @@
                       (aref data (+ i 2)) (blend b.fg b.bg)))
               (setf (aref data (+ i 3)) gamma))))))))
 
-(defun make-draw-function (data clipping-path
-                           width height
-                           fill-source
-                           alpha-fun)
+(defun make-png-draw-function (data clipping-path
+                               width height
+                               fill-source
+                               alpha-fun)
   (if (emptyp clipping-path)
-      (draw-function data width height fill-source alpha-fun)
-      (draw-function/clipped data (clipping-data clipping-path)
+      (png-draw-function data width height fill-source alpha-fun)
+      (png-draw-function/clipped data (clipping-data clipping-path)
                              width height
                              fill-source
                              alpha-fun)))
+
+(defun svg-draw-stroke-function (data stroke-color line-width)
+  (lambda (path)
+    (let ((r (float-octet (red stroke-color)))
+          (g (float-octet (green stroke-color)))
+          (b (float-octet (blue stroke-color)))
+          (a (float-octet (alpha stroke-color))))
+      (who:with-html-output-to-string (s data :indent t)
+        (who:htm (:path :d path
+                        :fill "none"
+                        :stroke (format nil "rgb(~d, ~d, ~d)" r g b)
+                        :stroke-width line-width))))))
+
+(defun svg-draw-fill-function (data fill-color)
+  (lambda (path)
+    (let ((r (float-octet (red fill-color)))
+          (g (float-octet (green fill-color)))
+          (b (float-octet (blue fill-color)))
+          (a (float-octet (alpha fill-color))))
+      (who:with-html-output-to-string (s data :indent t)
+        (who:htm (:path :d path
+                        :fill (format nil "rgb(~d, ~d, ~d)" r g b)))))))
+
+(defun make-svg-draw-stroke-function (data clipping-path stroke-color line-width)
+  (if (emptyp clipping-path)
+      (svg-draw-stroke-function data stroke-color line-width)
+      (svg-draw-stroke-function/clipped data (clipping-data clipping-path) stroke-color line-width)))
+
+(defun make-svg-draw-fill-function (data clipping-path fill-color)
+  (if (emptyp clipping-path)
+      (svg-draw-fill-function data fill-color)
+      (svg-draw-fill-function/clipped data (clipping-data clipping-path) fill-color)))
 
 (defun intersect-clipping-paths (data temp)
   (declare (type (simple-array (unsigned-byte 8) (*)) data temp))
@@ -132,9 +164,9 @@
       (let ((alpha (funcall alpha-fun alpha)))
         (setf (aref data i) alpha)))))
 
-(defun draw-paths (&key width height paths
-                   transform-function
-                   draw-function)
+(defun png-draw-paths (&key width height paths
+                            transform-function
+                            draw-function)
   "Use DRAW-FUNCTION as a callback for the cells sweep function
 for the set of paths PATHS."
   (let ((state (aa:make-state))
@@ -150,6 +182,13 @@ for the set of paths PATHS."
                        paths)))
     (vectors:update-state state paths)
     (aa:cells-sweep/rectangle state 0 0 width height draw-function)))
+
+(defun svg-draw-paths (&key width height paths
+                           transform-function
+                           draw-function)
+  (declare (ignorable width height transform-function))
+  (dolist (path paths)
+    (funcall draw-function path)))
 
 ;;; FIXME: this was added for drawing text paths, but the text
 ;;; rendering mode could be changed in the future, making it a little
@@ -196,26 +235,45 @@ for the set of paths PATHS."
 
 (defun state-draw-function (state fill-source fill-style)
   "Create a draw function for the graphics state STATE."
-  (make-draw-function (image-data state)
-                      (clipping-path state)
-                      (width state)
-                      (height state)
-                      fill-source
-                      (ecase fill-style
-                        (:even-odd #'even-odd-alpha)
-                        (:nonzero-winding #'nonzero-winding-alpha))))
+  (make-png-draw-function (image-data state)
+                          (clipping-path state)
+                          (width state)
+                          (height state)
+                          fill-source
+                          (ecase fill-style
+                            (:even-odd #'even-odd-alpha)
+                            (:nonzero-winding #'nonzero-winding-alpha))))
 
-(defun stroke-draw-function (state)
+(defgeneric stroke-draw-function (state)
+  (:documentation "Function for drawing a stroke in this graphics state."))
+
+(defmethod stroke-draw-function ((state png-graphics-state))
   (state-draw-function state
                        (stroke-source-function state)
                        :nonzero-winding))
 
-(defun fill-draw-function (state)
+(defmethod stroke-draw-function ((state svg-graphics-state))
+  (make-svg-draw-stroke-function (image-data state)
+                                 (clipping-path state)
+                                 (stroke-color state) (line-width state)))
+
+(defgeneric fill-draw-function (state)
+  (:documentation "Function for drawing a fill in this graphics state."))
+
+(defmethod fill-draw-function ((state png-graphics-state))
   (state-draw-function state
                        (fill-source-function state)
                        :nonzero-winding))
 
-(defun even-odd-fill-draw-function (state)
+(defmethod fill-draw-function ((state svg-graphics-state))
+  (make-svg-draw-fill-function (image-data state)
+                               (clipping-path state)
+                               (fill-color state)))
+
+(defgeneric even-odd-fill-draw-function (state)
+  (:documentation "Function for even-odd drawing a fill in this graphics state."))
+
+(defmethod even-odd-fill-draw-function ((state png-graphics-state))
   (state-draw-function state
                        (fill-source-function state)
                        :even-odd))
@@ -224,40 +282,71 @@ for the set of paths PATHS."
   (let ((matrix (transform-matrix state)))
     (abs (/ 1.0 (min (transform-matrix-x-scale matrix)
                      (transform-matrix-y-scale matrix))))))
-         
-(defun state-stroke-paths (state)
-  "Compute the outline paths of the strokes for the current paths of STATE."
+
+(defgeneric state-stroke-paths (state)
+  (:documentation "Compute the outline paths of the strokes for the
+current paths of STATE."))
+
+(defmethod state-stroke-paths ((state png-graphics-state))
   (let ((paths (dash-paths (paths state)
                            (dash-vector state)
                            (dash-phase state)))
         (paths:*bezier-distance-tolerance*
          (* paths:*bezier-distance-tolerance* (tolerance-scale state))))
-    (stroke-paths paths
-                  :line-width (line-width state)
-                  :join-style (join-style state)
-                  :cap-style (cap-style state))))
+    (png-stroke-paths paths
+                      :line-width (line-width state)
+                      :join-style (join-style state)
+                      :cap-style (cap-style state))))
 
-(defun draw-stroked-paths (state)
-  "Create a set of paths representing a stroking of the current
-paths of STATE, and draw them to the image."
-  (draw-paths :paths (state-stroke-paths state)
-              :width (width state)
-              :height (height state)
-              :transform-function (transform-function state)
-              :draw-function (stroke-draw-function state)))
+(defmethod state-stroke-paths ((state svg-graphics-state))
+  (svg-stroke-paths (paths state)
+                    :line-width (line-width state)
+                    :join-style (join-style state)
+                    :cap-style (cap-style state)))
 
-(defun close-paths (paths)
+(defgeneric draw-stroked-paths (state)
+  (:documentation "Create a set of paths representing a stroking of
+the current paths of STATE, and draw them to the image."))
+
+(defmethod draw-stroked-paths ((state png-graphics-state))
+  (png-draw-paths :paths (state-stroke-paths state)
+                  :width (width state)
+                  :height (height state)
+                  :transform-function (transform-function state)
+                  :draw-function (stroke-draw-function state)))
+
+(defmethod draw-stroked-paths ((state svg-graphics-state))
+  (svg-draw-paths :paths (paths state)
+                  :width (width state)
+                  :height (height state)
+                  :transform-function (transform-function state)
+                  :draw-function (stroke-draw-function state)))
+
+(defun png-close-paths (paths)
   (dolist (path paths)
     (setf (paths::path-type path) :closed-polyline)))
 
-(defun draw-filled-paths (state)
-  "Fill the paths of STATE into the image."
-  (close-paths (paths state))
-  (draw-paths :paths (paths state)
-              :width (width state)
-              :height (height state)
-              :transform-function (transform-function state)
-              :draw-function (fill-draw-function state)))
+(defgeneric draw-filled-paths (state)
+  (:documentation "Fill the paths of STATE into the image."))
+
+(defmethod draw-filled-paths ((state png-graphics-state))
+  (png-close-paths (paths state))
+  (png-draw-paths :paths (paths state)
+                  :width (width state)
+                  :height (height state)
+                  :transform-function (transform-function state)
+                  :draw-function (fill-draw-function state)))
+
+(defun svg-close-path (path)
+  (with-output-to-string (s path) (format s "Z")))
+
+(defmethod draw-filled-paths ((state svg-graphics-state))
+  (svg-close-path (path state))
+  (svg-draw-paths :paths (paths state)
+                  :width (width state)
+                  :height (height state)
+                  :transform-function (transform-function state)
+                  :draw-function (fill-draw-function state)))
 
 (defun draw-even-odd-filled-paths (state)
   "Fill the paths of STATE into the image."
@@ -293,4 +382,3 @@ paths of STATE, and draw them to the image."
     (:even-odd
      (lambda ()
        (draw-clipping-path state #'even-odd-alpha)))))
-
