@@ -195,11 +195,11 @@ for the set of paths PATHS."
 ;;; silly to have a fixed draw-function.
 
 (defun draw-paths/state (paths state)
-  (draw-paths :paths paths
-              :width (width state)
-              :height (height state)
-              :transform-function (transform-function state)
-              :draw-function (fill-draw-function state)))
+  (png-draw-paths :paths paths
+                  :width (width state)
+                  :height (height state)
+                  :transform-function (transform-function state)
+                  :draw-function (fill-draw-function state)))
 
 (defun fill-image (image-data red green blue alpha)
   "Completely fill IMAGE with the given colors."
@@ -351,11 +351,11 @@ the current paths of STATE, and draw them to the image."))
 (defun draw-even-odd-filled-paths (state)
   "Fill the paths of STATE into the image."
   (close-paths (paths state))
-  (draw-paths :paths (paths state)
-              :width (width state)
-              :height (height state)
-              :transform-function (transform-function state)
-              :draw-function (even-odd-fill-draw-function state)))
+  (png-draw-paths :paths (paths state)
+                  :width (width state)
+                  :height (height state)
+                  :transform-function (transform-function state)
+                  :draw-function (even-odd-fill-draw-function state)))
 
 (defun draw-clipping-path (state alpha-fun)
   (let ((data (writable-clipping-data (clipping-path state)))
@@ -364,14 +364,14 @@ the current paths of STATE, and draw them to the image."))
         (height (height state)))
     (declare (type octet-vector data scratch))
     (fill scratch 0)
-    (draw-paths :paths (paths state)
-                :width (width state)
-                :height (height state)
-                :transform-function (transform-function state)
-                :draw-function (draw-clipping-path-function scratch
-                                                            width
-                                                            height
-                                                            alpha-fun))
+    (png-draw-paths :paths (paths state)
+                    :width (width state)
+                    :height (height state)
+                    :transform-function (transform-function state)
+                    :draw-function (draw-clipping-path-function scratch
+                                                                width
+                                                                height
+                                                                alpha-fun))
     (intersect-clipping-paths data scratch)))
 
 (defun make-clipping-path-function (state type)
